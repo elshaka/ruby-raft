@@ -16,11 +16,19 @@ task :run do
 
   leader = nodes.first.tap(&:become_leader)
   simulation_thread = Thread.new do
-    sleep 1
-    leader.become_follower
+    ['hello', 'how', 'are', 'you'].each do |state|
+      nodes.last.propose_state(state)
+      sleep 0.5
+    end
+    leader.kill
   end
 
   nodes.each(&:start)
   nodes.each(&:join)
+
+  nodes.each do |node|
+    puts "#{node.name}'s log: #{node.log}"
+  end
+
   simulation_thread.join
 end
