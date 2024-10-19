@@ -13,6 +13,14 @@ task :run do
       node.add_neighbor neighbor
     end
   end
-  nodes.each(&:hello)
+
+  leader = nodes.first.tap(&:become_leader)
+  simulation_thread = Thread.new do
+    sleep 1
+    leader.become_follower
+  end
+
+  nodes.each(&:start)
   nodes.each(&:join)
+  simulation_thread.join
 end
