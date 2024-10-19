@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'rake'
-require 'rubocop/rake_task'
 
 task :run do
   require_relative 'lib/node'
@@ -15,6 +14,5 @@ task :run do
     end
   end
   nodes.each(&:hello)
-
   nodes.each(&:take)
 end
