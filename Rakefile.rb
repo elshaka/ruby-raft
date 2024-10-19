@@ -14,5 +14,5 @@ task :run do
     end
   end
   nodes.each(&:hello)
-  nodes.each(&:take)
+  nodes.each(&:join)
 end
