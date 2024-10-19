@@ -7,7 +7,7 @@ class Node
   HEARTBEAT_INTERVAL = 0.5
   HEARTBEAT_TIMEOUT = HEARTBEAT_INTERVAL + 1
 
-  attr_reader :uuid, :name, :log
+  attr_reader :uuid, :name, :log, :inbox_log
   attr_accessor :leader
 
   def initialize(name)
@@ -18,6 +18,7 @@ class Node
     @neighbors = []
     @leader = nil
     @inbox = Queue.new
+    @inbox_log = []
     @log = []
   end
 
@@ -26,11 +27,13 @@ class Node
   end
 
   def start
-    @receive_thread = Thread.new do
+    @inbox_thread = Thread.new do
       loop do
         break if dead?
 
         sender, type, content = receive
+
+        @inbox_log << { sender: sender.name, type: type, content: content } unless type == :timeout
 
         case type
         when :heartbeat
@@ -38,16 +41,14 @@ class Node
         when :propose_state
           if leader?
             puts "#{name} (leader) received a state proposal (#{content})"
-            @log << content
+            log_state content
             propagate_state content
           else
-            puts "#{name} received a state proposal but it's not the leader, fowarding proposal"
+            puts "#{name} received a state proposal (#{content}) but it's not the leader, fowarding proposal"
             propose_state_to_leader content
           end
-        when :set_state
-          unless leader?
-            @log << content
-          end
+        when :log_state
+          log_state content
         when :timeout
           unless leader?
             puts "#{name} received no heartbeat, it gon die"
@@ -59,7 +60,7 @@ class Node
       end
     end
 
-    @send_thread = Thread.new do
+    @heartbeat_thread = Thread.new do
       loop do
         break if dead?
 
@@ -67,6 +68,29 @@ class Node
         sleep HEARTBEAT_INTERVAL
       end
     end
+  end
+
+  def propose_state(state)
+    send(self, :propose_state, state)
+  end
+
+  def propose_state_to_leader(state)
+    raise "Node #{self} does not have a leader to foward a state proposal" unless @leader
+
+    @leader.send(self, :propose_state, state)
+  end
+
+  def propagate_state(state)
+    raise "Node #{self} cannot propagate the state #{state} since it's not the leader" unless leader?
+
+    @neighbors.each do |node|
+      node.send self, :log_state, state
+    end
+    puts "State #{state} has been propagated"
+  end
+
+  def log_state(content)
+    @log << content
   end
 
   def send(sender, type, content = nil)
@@ -89,26 +113,9 @@ class Node
     puts "#{name} has been killed"
   end
 
-  def propose_state(state)
-    send(self, :propose_state, state)
-  end
-
-  def propose_state_to_leader(state)
-    raise "Node #{self} does not have a leader to foward a state proposal" unless @leader
-    @leader.send(self, :propose_state, state)
-  end
-
-  def propagate_state(state)
-    raise "Node #{self} cannot propagate the state #{state} since it's not the leader" unless leader?
-    @neighbors.each do |node|
-      node.send self, :set_state, state
-    end
-    puts "State #{state} has been propagated"
-  end
-
   def join
-    @receive_thread.join
-    @send_thread.join
+    @inbox_thread.join
+    @heartbeat_thread.join
   end
 
   private

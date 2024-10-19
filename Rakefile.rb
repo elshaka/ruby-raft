@@ -15,20 +15,25 @@ task :run do
   end
 
   leader = nodes.first.tap(&:become_leader)
+  nodes.each(&:start)
+
   simulation_thread = Thread.new do
-    ['hello', 'how', 'are', 'you'].each do |state|
+    %w[hello how are you].each do |state|
       nodes.last.propose_state(state)
-      sleep 0.5
+      sleep 1
     end
     leader.kill
   end
 
-  nodes.each(&:start)
   nodes.each(&:join)
+  simulation_thread.join
 
   nodes.each do |node|
-    puts "#{node.name}'s log: #{node.log}"
+    puts "#{node.name}'s log:"
+    puts "\tState log: #{node.log}"
+    puts "\tInbox log:"
+    node.inbox_log.each { |message| puts "\t\t#{message}" }
   end
 
-  simulation_thread.join
+  binding.irb
 end
