@@ -39,11 +39,13 @@ class Node
         break if dead?
 
         sender, type, content = receive
-        @inbox_log << { sender: sender.name, type: type, content: content } unless type == :timeout
+        @inbox_log << { sender: sender.name, type: type, content: content } unless [:timeout, :heartbeat].include? type
 
         case type
         when :heartbeat
-          #puts "#{name} received heartbeat from leader #{sender.name}"
+          if sender != @leader
+            warn "#{name} received a hearbeat from #{sender.name} but its leader is #{@leader.name}"
+          end
         when :propose_state
           if leader?
             puts "#{name} (leader) received a state proposal (#{content})"
@@ -101,7 +103,7 @@ class Node
     @neighbors.each do |node|
       node.send self, :log_state, state
     end
-    puts "State #{state} has been propagated"
+    puts "State '#{state}' has been propagated"
   end
 
   def log_state(content)
@@ -145,6 +147,7 @@ class Node
   def kill
     @neighbors.each do |node|
       node.remove_neighbor self
+      node.leader = nil if node.leader == self
     end
     @neighbors = Set.new
     @status = :dead
@@ -156,10 +159,12 @@ class Node
     @heartbeat_thread.join
   end
 
-  private
-
   def leader?
     @role == :leader
+  end
+
+  def follower?
+    @role == :follower
   end
 
   def dead?
@@ -167,7 +172,7 @@ class Node
   end
 
   def receive
-    Timeout.timeout(HEARTBEAT_TIMEOUT + 5 * rand) do
+    Timeout.timeout(HEARTBEAT_TIMEOUT + 10 * rand) do
       loop do
         break unless @inbox.empty?
       end
