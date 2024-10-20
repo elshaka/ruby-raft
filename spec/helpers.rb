@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require './lib/node'
-
 module Helpers
   def generate_cluster(node_names)
     nodes = node_names.map { |name| Node.new name }
