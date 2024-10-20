@@ -30,13 +30,13 @@ task :run do
   simulation_thread = Thread.new do
     sleep 10
 
-    follower = nodes.detect { |node| node.follower? }
+    follower = nodes.detect(&:follower?)
     %w[hello how are you].each do |state|
       follower.propose_state(state)
       sleep 1
     end
 
-    leader = nodes.detect { |node| node.leader? }
+    leader = nodes.detect(&:leader?)
     leader.kill
 
     sleep 10
