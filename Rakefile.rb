@@ -5,6 +5,19 @@ require 'rake'
 task :run do
   require_relative 'lib/node'
 
+  # This script creates a 'cluster' of nodes, all initially followers.
+
+  # The leader announces its presence by continuously sending heartbeats
+  # to the followers but since there's initially no leader sending heartbeats,
+  # one follower will eventually time out and initiate a leader election.
+
+  # Each follower has a random timeout, ensuring only one node requests
+  # an election at a time (hopefully).
+
+  # A state proposal can be sent to any node. If the node is a follower,
+  # it will forward the proposal to its leader. However, if the follower
+  # has no leader, any state proposal will be lost.
+
   node_names = %w[Jake Maria Jose]
   nodes = node_names.map { |name| Node.new name }
   nodes.each do |node|
@@ -14,15 +27,14 @@ task :run do
     end
   end
 
-  leader = nodes.first.tap(&:become_leader)
-  nodes.each(&:start)
-
   simulation_thread = Thread.new do
+    sleep 10
     %w[hello how are you].each do |state|
       nodes.last.propose_state(state)
       sleep 1
     end
-    leader.kill
+
+    nodes.each(&:kill)
   end
 
   nodes.each(&:join)
@@ -34,6 +46,4 @@ task :run do
     puts "\tInbox log:"
     node.inbox_log.each { |message| puts "\t\t#{message}" }
   end
-
-  binding.irb
 end
