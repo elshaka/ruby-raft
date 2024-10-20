@@ -46,8 +46,11 @@ class Node
       loop do
         break if stopped? || failed?
 
-        sender, type, content = receive rescue break
-
+        sender, type, content = begin
+          receive
+        rescue StandardError
+          break
+        end
 
         @inbox_log << { sender: sender.name, type: type, content: content } unless %i[timeout heartbeat].include? type
 
@@ -93,6 +96,7 @@ class Node
     @heartbeat_thread = Thread.new do
       loop do
         break if stopped? || failed?
+
         heartbeat if leader?
         sleep HEARTBEAT_INTERVAL
       end

@@ -4,35 +4,62 @@ require 'spec_helper'
 require './lib/node'
 
 describe Node do
+  before(:each) do
+    @nodes = generate_cluster %w[Jake Maria Jose]
+  end
+
   describe 'Leader election' do
-    before(:all) do
-      node_names = %w[Jake Maria Jose]
-      @nodes = node_names.map { |name| Node.new name }
-      @nodes.each do |node|
-        neighbors = @nodes.reject { |neighbor| node == neighbor }
-        neighbors.each do |neighbor|
-          node.add_neighbor neighbor
-        end
-      end
-      @nodes.each(&:start)
-
-      simulation_thread = Thread.new do
-        # Wait for the nodes to elect a leader
-        sleep Node::MAX_HEARTBEAT_TIMEOUT
-      ensure
-        @nodes.each(&:stop)
-      end
-
-      @nodes.each(&:join)
-      simulation_thread.join
-    end
-
     context 'when all the nodes are followers and the maximum heartbeat timeout has passed' do
       it 'a single leader is elected' do
-        expected_node_roles = Set.new(%i[leader follower follower])
-        node_roles = Set.new(@nodes.map(&:role))
+        simulate_cluster(@nodes) do |_nodes|
+          sleep Node::MAX_HEARTBEAT_TIMEOUT
+        end
 
-        expect(node_roles).to eq(expected_node_roles)
+        expected_node_roles = %i[leader follower follower]
+        node_roles = @nodes.map(&:role)
+
+        expect(node_roles.sort).to eq expected_node_roles.sort
+      end
+    end
+  end
+
+  describe 'State proposal' do
+    context 'No failures' do
+      context 'the leader receives a state proposal' do
+        it 'propagates the state accordinly' do
+          state = 'some state'
+
+          simulate_cluster(@nodes) do |nodes|
+            sleep Node::MAX_HEARTBEAT_TIMEOUT
+
+            leader = nodes.detect(&:leader?)
+            leader.propose_state(state)
+
+            sleep Node::HEARTBEAT_INTERVAL
+          end
+
+          expect(@nodes.map(&:log)).to eq Array.new @nodes.count, [state]
+        end
+      end
+
+      context 'a follower receives a state proposal' do
+        it 'fowards the proposal to the leader' do
+          state = 'some state'
+
+          simulate_cluster(@nodes) do |nodes|
+            sleep Node::MAX_HEARTBEAT_TIMEOUT
+
+            follower = nodes.detect(&:follower?)
+            follower.propose_state(state)
+
+            sleep Node::HEARTBEAT_INTERVAL
+          end
+
+          leader = @nodes.detect(&:leader?)
+          got_state_proposal = leader.inbox_log.any? { |message| message[:type] = :propose_state }
+
+          expect(got_state_proposal).to be true
+        end
       end
     end
   end
