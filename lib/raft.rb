@@ -8,7 +8,7 @@ class Raft
   HEARTBEAT_TIMEOUT_RAND_MULTIPLIER = 5
   MAX_HEARTBEAT_TIMEOUT = HEARTBEAT_TIMEOUT + HEARTBEAT_TIMEOUT_RAND_MULTIPLIER
 
-def initialize(node)
+  def initialize(node)
     @node = node
     @status = :following
     @leader = nil
@@ -53,15 +53,7 @@ def initialize(node)
     end
   end
 
-  def handle_heartbeat
-    return unless @message[:sender] != @leader
-
-    if @leader
-      warn "#{@node.name} received a hearbeat from #{@message[:sender].name} but its leader is #{@leader.name}"
-    else
-      warn "#{@node.name} received a hearbeat from #{@message[:sender].name} but has no leader"
-    end
-  end
+  def handle_heartbeat; end
 
   def handle_propose_state
     state = @message[:content]
@@ -99,10 +91,10 @@ def initialize(node)
 
   def handle_leader_election_vote
     @votes << { voter: @message[:sender], candidate: @message[:content] }
-    return unless @votes.count == @node.neighbors_count
+    return unless @votes.count == @node.neighbors.count
 
     approvals = @votes.select { |vote| vote[:candidate] == @node }
-    if approvals.count >= (@node.neighbors_count) / 2
+    if approvals.count >= (@node.neighbors.count) / 2
       @node.send_to_all_neighbors :set_leader
       @status = :leading
       puts "#{@node.name} is now the leader"
@@ -124,7 +116,7 @@ def initialize(node)
 
   def propose_state_to_leader(state)
     unless @leader
-      warn "Node #{@node.name} does not have a leader to foward a state proposal, the state proposal has been lost"
+      warn "Follower node #{@node.name} does not have a leader to foward a state proposal, the state proposal has been lost"
       return
     end
 
@@ -132,10 +124,9 @@ def initialize(node)
   end
 
   def propagate_state(state)
-    # raise "Node #{@node} it's not the leader and cannot propagate the state #{state}" unless leader?
+    raise "Node #{@node} it's not the leader and cannot propagate the state #{state}" unless leading?
 
     @node.send_to_all_neighbors :log_state, state
-    puts "State '#{state}' has been propagated"
   end
 
   def log_state(content)

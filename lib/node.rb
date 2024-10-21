@@ -4,7 +4,9 @@ require 'securerandom'
 require './lib/raft'
 
 class Node
-  attr_reader :uuid, :name, :log, :inbox, :inbox_log
+  OPERATION_SLEEP_TIME = 1
+
+  attr_reader :name, :neighbors, :log, :inbox, :inbox_log
 
   def initialize(name)
     @name = name
@@ -21,16 +23,26 @@ class Node
     @neighbors << node
   end
 
-  def remove_neighbor(node)
-    @neighbors.delete(node)
-  end
-
-  def neighbors_count
-    @neighbors.count
-  end
-
   def propose_state(state)
     send(self, :propose_state, state)
+    sleep OPERATION_SLEEP_TIME
+  end
+
+  def simulate_partition(nodes)
+    puts "The following nodes will be disconected from #{name} and its neighbors: #{nodes}"
+    nodes.each do |node|
+      remove_neighbor(node)
+      node.remove_neighbor(self)
+    end
+    sleep OPERATION_SLEEP_TIME
+  end
+
+  def retrieve_log
+    @log
+  end
+
+  def remove_neighbor(node)
+    @neighbors.delete(node)
   end
 
   def start
@@ -68,5 +80,9 @@ class Node
 
   def running?
     @status == :running
+  end
+
+  def inspect
+    "<Node:#{name}>"
   end
 end
