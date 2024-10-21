@@ -14,6 +14,8 @@ bundle install
 
 Create some nodes:
 ```ruby
+require './lib/node'
+
 node1 = Node.new "node1"
 node2 = Node.new "node2"
 node3 = Node.new "node3"
