@@ -20,7 +20,7 @@ class Node
   end
 
   def add_neighbor(node)
-    @neighbors << node
+    @neighbors << node unless node == self
   end
 
   def propose_state(state)
@@ -28,13 +28,13 @@ class Node
     sleep OPERATION_SLEEP_TIME
   end
 
-  def simulate_partition(nodes)
-    puts "The following nodes will be disconected from #{name} and its neighbors: #{nodes}"
-    nodes.each do |node|
-      remove_neighbor(node)
-      node.remove_neighbor(self)
-    end
-    sleep OPERATION_SLEEP_TIME
+  def simulate_partition(nodes_to_partition)
+    puts "The following nodes: #{nodes_to_partition.map(&:name)} will be partitioned from: #{cluster.map(&:name)}"
+    remaining_nodes = cluster.subtract(nodes_to_partition)
+
+    update_neighbors remaining_nodes
+    neighbors.each { |node| node.update_neighbors remaining_nodes }
+    nodes_to_partition.each { |node| node.update_neighbors nodes_to_partition }
   end
 
   def retrieve_log
@@ -43,6 +43,17 @@ class Node
 
   def remove_neighbor(node)
     @neighbors.delete(node)
+  end
+
+  def cluster
+    Set.new([self]) + neighbors
+  end
+
+  def update_neighbors new_neighbors
+    @neighbors = Set.new
+    new_neighbors.each do |neighbor|
+      add_neighbor neighbor
+    end
   end
 
   def start
