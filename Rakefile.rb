@@ -10,11 +10,9 @@ task :debug do
   nodes = generate_cluster %w[Jake Maria Jose]
 
   start_cluster(nodes) do |nodes|
-    node1, node2, node3 = nodes
-
-    node1.propose_state(1)
-    node2.propose_state(2)
-    node2.propose_state(3)
+    ['state1', 'state2', 'state3'].each do |state|
+      nodes.sample.propose_state state
+    end
   end
 
   nodes.each do |node|
