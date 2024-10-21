@@ -39,7 +39,7 @@ Following the Raft algorithm, all nodes are intially followers but after a timeo
 
 The following code would send 3 state proposals, each to a node picked randomly.
 
-```
+```ruby
 [1, 2, 3].each do |state|
   [node1, node2, node3].sample.propose_state state
 end
@@ -49,7 +49,7 @@ In case a follower node receives a state proposal it will foward it to the leade
 
 To stop the nodes you'd do
 
-```
+```ruby
 [node1, node2, node3].each(&stop)
 [node1, node2, node3].each(&join) # Let all node threads finish
 ```
