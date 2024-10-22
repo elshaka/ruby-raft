@@ -92,9 +92,9 @@ describe Node do
 
         node1, node2, node3 = @nodes
 
-        expect(node1.retrieve_log).to eq [1, 2]
-        expect(node2.retrieve_log).to eq [1, 2, 3]
-        expect(node3.retrieve_log).to eq [1, 2, 3]
+        expect(node1.retrieve_log.map { |log| log[:state] }).to eq [1, 2]
+        expect(node2.retrieve_log.map { |log| log[:state] }).to eq [1, 2, 3]
+        expect(node3.retrieve_log.map { |log| log[:state] }).to eq [1, 2, 3]
       end
     end
   end

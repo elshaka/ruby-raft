@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
-require './lib/raft'
-
 module Helpers
+  SIM_WAIT_TIME = 3
   def generate_cluster(node_names)
     nodes = node_names.map { |name| Node.new name }
     nodes.each do |node|
@@ -19,11 +18,11 @@ module Helpers
     nodes.each(&:start)
 
     thread = Thread.new do
-      sleep Raft::MAX_HEARTBEAT_TIMEOUT
+      sleep nodes.first.max_init_time
 
       block.call(nodes) if block_given?
 
-      sleep Raft::HEARTBEAT_INTERVAL
+      sleep nodes.first.operation_sleep_time
     ensure
       nodes.each(&:stop)
     end

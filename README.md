@@ -4,6 +4,12 @@ A simple Ruby implementation of the Raft algorithm for a ditributed system where
 
 Each node holds a log of all state transitions and received messages.
 
+## Implementation limitations with MRI
+
+The implementation is threaded. Due to the MRI's Global Interpreter Lock (GIL), which prevents true parallelism, Raft heartbeat timeouts need to be set to higher than usual values to avoid frequent leader election splits. This can significantly slow down the behavior of the nodes.
+
+As a temporary solution, you can use JRuby, which allows true parallel threads. In this case, the code will set the heartbeat timeouts to shorter values.
+
 ## Install
 
 ```
@@ -31,7 +37,7 @@ node3.add_neighbor node1
 node3.add_neighbor node2
 ```
 
-The implementation is threaded, so you'd need to start the nodes first
+Start the nodes
 
 ```ruby
 [node1, node2, node3].each(&start)

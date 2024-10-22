@@ -4,8 +4,6 @@ require 'securerandom'
 require './lib/raft'
 
 class Node
-  OPERATION_SLEEP_TIME = 1
-
   attr_reader :name, :neighbors, :log, :inbox, :inbox_log
 
   def initialize(name)
@@ -13,7 +11,7 @@ class Node
     @uuid = SecureRandom.uuid
     @status = :stopped
     @neighbors = Set.new
-    @inbox = []
+    @inbox = Queue.new
     @inbox_log = []
     @log = []
     @algorithm = Raft.new self
@@ -25,7 +23,7 @@ class Node
 
   def propose_state(state)
     send(self, :propose_state, state)
-    sleep OPERATION_SLEEP_TIME
+    sleep operation_sleep_time
   end
 
   def simulate_partition(nodes_to_partition)
@@ -35,6 +33,8 @@ class Node
     update_neighbors remaining_nodes
     neighbors.each { |node| node.update_neighbors remaining_nodes }
     nodes_to_partition.each { |node| node.update_neighbors nodes_to_partition }
+
+    sleep operation_sleep_time * 10
   end
 
   def retrieve_log
@@ -49,7 +49,7 @@ class Node
     Set.new([self]) + neighbors
   end
 
-  def update_neighbors new_neighbors
+  def update_neighbors(new_neighbors)
     @neighbors = Set.new
     new_neighbors.each do |neighbor|
       add_neighbor neighbor
@@ -59,7 +59,7 @@ class Node
   def start
     @status = :running
     @algorithm.start
-    puts "Node #{name} has been started"
+    puts "#{name} has been started"
   end
 
   def stop
@@ -81,8 +81,12 @@ class Node
     end
   end
 
-  def role
-    @algorithm.role
+  def max_init_time
+    @algorithm.max_init_time
+  end
+
+  def operation_sleep_time
+    max_init_time / 5
   end
 
   def join
