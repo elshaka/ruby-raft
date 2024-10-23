@@ -4,12 +4,6 @@ A simple Ruby implementation of the Raft algorithm for a ditributed system where
 
 Each node holds a log of all state transitions and received messages.
 
-## Implementation limitations with MRI
-
-The implementation is threaded. Due to the MRI's Global Interpreter Lock (GIL), which prevents true parallelism, Raft heartbeat timeouts need to be set to higher than usual values to avoid frequent leader election splits. This can significantly slow down the behavior of the nodes.
-
-As a temporary solution, you can use JRuby, which allows true parallel threads. In this case, the code will set the heartbeat timeouts to shorter values.
-
 ## Install
 
 ```
@@ -81,3 +75,33 @@ The task does the following:
 ```
 bundle exec rspec
 ```
+
+## Currently working
+
+- Leader election using terms
+- State proposal with append confirmation from followers before commiting to log
+
+## Pending
+
+- Log replication in case of failures/partitions: In the case of a partition with two follower nodes, the current implementation will get that partition stucked in a permanent election split between the two nodes incrementing the term constantly until the partition is resolved. In said scenario (nodes with a higher term but shorter logs) a specific behavior needs to be defined before implementing log recovery/replication.
+
+- Spec for the Raft class for its current implementation, the main thread using a `loop do` could be dealt with the following rspec mock:
+
+```ruby
+@node = double
+allow(@node).to receive(:inbox).and_return Queue.new # simulate an expected message
+allow(@node).to receive(:running?).and_return(false, true) # this will allow the loop to run once and exit.
+
+@raft = Raft.new @node
+@raft.start
+@raft.join
+
+# expect(@raft... ).to have_done_something
+```
+
+## Implementation limitations with MRI
+
+The implementation is threaded. Due to the MRI's Global Interpreter Lock (GIL), which prevents true parallelism, Raft heartbeat timeouts need to be set to higher than usual values to avoid frequent leader election splits. This can significantly slow down the behavior of the nodes.
+
+As a temporary solution, you can use JRuby, which allows true parallel threads. In this case, the code will set the heartbeat timeouts to shorter values.
+
